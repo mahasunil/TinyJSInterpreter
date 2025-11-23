@@ -37,7 +37,7 @@ public:
     vector<Token> tokenize()
     {
         vector<Token> tokens;
-        while (currentChar!='\0')
+        while (currentChar != '\0')
         {
             if (isspace(currentChar))
                 advance();
@@ -144,5 +144,113 @@ private:
             return {TokenType::PRINT, result};
         }
         return {TokenType::IDENTIFIER, result};
+    }
+};
+
+struct ASTNode
+{
+    virtual ~ASTNode() {};
+};
+
+struct NumberNode : ASTNode
+{
+    int value;
+    NumberNode(int v) : value(v) {};
+};
+struct BinOpNode : ASTNode
+{
+    shared_ptr<ASTNode> left;
+    TokenType op;
+    shared_ptr<ASTNode> right;
+    BinOpNode(shared_ptr<ASTNode> l, TokenType o, shared_ptr<ASTNode> r) : left(l), op(o), right(r) {};
+};
+
+struct VarAccessNode : ASTNode
+{
+    string name;
+    VarAccessNode(const string &n) : name(n) {};
+};
+
+struct VarAssignNode : ASTNode
+{
+    string name;
+    shared_ptr<ASTNode> value;
+    VarAssignNode(const string &n, shared_ptr<ASTNode> v) : name(n), value(v) {};
+};
+
+class Parser
+{
+public:
+    Parser(const vector<Token> &tokens) : tokens(tokens), pos(0) {};
+    shared_ptr<ASTNode> parse()
+    {
+        return expr();
+    }
+
+private:
+    vector<Token> tokens;
+    size_t pos;
+
+    Token currentToken()
+    {
+        if (pos < tokens.size())
+        {
+            return tokens[pos];
+        }
+        return {TokenType::END, ""};
+    }
+
+    void advance()
+    {
+        if (pos < tokens.size())
+            pos++;
+    }
+
+    shared_ptr<ASTNode> factor()
+    {
+        Token tok = currentToken();
+        if (tok.type == TokenType::NUMBER)
+        {
+            advance();
+            return make_shared<NumberNode>(stoi(tok.value));
+        }
+        else if (tok.type == TokenType::IDENTIFIER)
+        {
+            advance();
+            return make_shared<VarAccessNode>(tok.value);
+        }
+        else if (tok.type == TokenType::LPAREN)
+        {
+            advance();
+            auto node = expr();
+            if (currentToken().type == TokenType::RPAREN)
+                advance();
+            return node;
+        }
+        return nullptr;
+    }
+
+    shared_ptr<ASTNode> term()
+    {
+        auto node = factor();
+        while (currentToken().type == TokenType::MUL || currentToken().type == TokenType::DIV)
+        {
+            TokenType op = currentToken().type;
+            advance();
+            node = make_shared<BinOpNode>(node, op, factor());
+        }
+        return node;
+    }
+
+    shared_ptr<ASTNode> expr()
+    {
+        auto node = term();
+        while (currentToken().type == TokenType::PLUS || currentToken().type == TokenType::MINUS)
+        {
+            TokenType op = currentToken().type;
+            advance();
+            node = make_shared<BinOpNode>(node, op, term());
+        }
+        return node;
     }
 };
