@@ -254,3 +254,59 @@ private:
         return node;
     }
 };
+
+class Interpreter
+{
+public:
+    void visit(shared_ptr<ASTNode> node)
+    {
+        if (auto n = dynamic_pointer_cast<NumberNode>(node))
+        {
+            result = n->value;
+        }
+        else if (auto b = dynamic_pointer_cast<BinOpNode>(node))
+        {
+            visit(b->left);
+            int leftval = result;
+            visit(b->right);
+            int rightval = result;
+            if (b->op == TokenType::PLUS)
+            {
+                result = leftval + rightval;
+            }
+            else if (b->op == TokenType::MINUS)
+            {
+                result = leftval - rightval;
+            }
+            else if (b->op == TokenType::MUL)
+            {
+                result = leftval * rightval;
+            }
+            else if (b->op == TokenType::DIV)
+            {
+                result = leftval / rightval;
+            }
+        }
+    }
+    int getResult() { return result; }
+
+private:
+    int result = 0;
+};
+
+int main(){
+    string input = "(2+3)*(4-1)";
+    cout<<"Expression: "<<input<<endl;
+
+    Lexer lexer(input);
+    vector<Token>tokens = lexer.tokenize();
+
+    Parser parser(tokens);
+    shared_ptr<ASTNode>tree = parser.parse();
+
+    Interpreter interpreter;
+    interpreter.visit(tree);
+
+    cout<<"Result: "<<interpreter.getResult()<<endl;
+    return 0;
+}
